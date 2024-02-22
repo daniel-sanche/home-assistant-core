@@ -5126,6 +5126,12 @@
         }
       }
     },
+    "sanche": {
+      "name": "sanche-test",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_polling"
+    },
     "satel_integra": {
       "name": "Satel Integra",
       "integration_type": "hub",

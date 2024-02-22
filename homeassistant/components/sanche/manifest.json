@@ -1,0 +1,13 @@
+{
+  "domain": "sanche",
+  "name": "sanche-test",
+  "codeowners": ["@daniel-sanche"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/sanche",
+  "homekit": {},
+  "iot_class": "local_polling",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
