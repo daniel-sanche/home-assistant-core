@@ -1,18 +1,18 @@
 """Config flow for sanche-test."""
 # import my_pypi_dependency
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_entry_flow
+import voluptuous as vol
+
+from homeassistant import config_entries
 
 from .const import DOMAIN
 
 
-async def _async_has_devices(hass: HomeAssistant) -> bool:
-    """Return if there are devices that can be discovered."""
-    # TODO Check if there are any devices that can be discovered in the network.
-    # devices = await hass.async_add_executor_job(my_pypi_dependency.discover)
-    # return len(devices) > 0
-    return True
-
-
-config_entry_flow.register_discovery_flow(DOMAIN, "sanche-test", _async_has_devices)
+class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    async def async_step_user(self, user_input=None):
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {vol.Required("password"): str, vol.Required("url"): str}
+            ),
+        )

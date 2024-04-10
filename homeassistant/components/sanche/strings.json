@@ -1,13 +1,18 @@
 {
   "config": {
     "step": {
-      "confirm": {
-        "description": "[%key:common::config_flow::description::confirm_setup%]"
+      "user": {
+        "title": "Test Title",
+        "data": {
+          "url": "URL",
+          "password": "Password"
+        },
+        "data_description": {
+          "url": "Host URL",
+          "password": "Password"
+        },
+        "description": "Test Description"
       }
-    },
-    "abort": {
-      "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
-      "no_devices_found": "[%key:common::config_flow::abort::no_devices_found%]"
     }
   }
 }
