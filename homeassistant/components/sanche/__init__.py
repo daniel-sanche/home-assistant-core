@@ -2,18 +2,14 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR]
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up sanche-test from a config entry."""
+    print("start setup entry")
 
     hass.data.setdefault(DOMAIN, {})
     # TODO 1. Create API instance
@@ -23,12 +19,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Listener to handle fired events
+    async def handle_event(event):
+        print(f"Received event: {event}")
+
+    # Listen for when example_component_my_cool_event is fired
+    hass.bus.async_listen("*", handle_event)
+
+    print("end setup entry")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    print("start unload entry")
+    # if unload_ok := await hass.config_entries.async_unload_platforms(en:
+    #     hass.data[DOMAIN].pop(entry.entry_id)
 
-    return unload_ok
+    print("end unload entry")
+    return True
