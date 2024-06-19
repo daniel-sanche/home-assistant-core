@@ -6,7 +6,7 @@
         "data": {
           "url": "URL",
           "password": "Password",
-          "entities": "Tracked Entities (leave blank to track all)"
+          "entities": "Tracked Entities"
         },
         "data_description": {
           "url": "",

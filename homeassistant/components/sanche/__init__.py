@@ -4,6 +4,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import TrackStates, async_track_state_change_event
 
 from .const import DOMAIN
 
@@ -19,20 +20,31 @@ class HassEventListener:
         return self._cancel_fn is not None
 
     def register_config_entry(self, entry: ConfigEntry):
-        print("register_config_entry")
-        self._listeners.add(entry.entry_id)
-        if not self._is_running:
-            self._cancel_fn = self.hass.bus.async_listen("*", self._handle_event)
+        print(f"register_config_entry: {entry}")
+        self._listeners.add(entry)
+        self._update_listener()
 
     def remove_config_entry(self, entry: ConfigEntry):
-        print("remove_config_entry")
-        self._listeners.remove(entry.entry_id)
-        if not self._listeners:
-            self._cancel_fn()
-            self._cancel_fn = None
+        print(f"remove_config_entry: {entry}")
+        self._listeners.remove(entry)
+        self._update_listener()
 
     async def _handle_event(self, event):
         print(f"Received event: {event}")
+
+    def _update_listener(self):
+        if self._is_running:
+            self._cancel_fn()
+        all_entites = set()
+        for entry in self._listeners:
+            all_entites.update(entry.data["entities"])
+        if all_entites:
+            print(f"Listening to entities: {all_entites}")
+            self._cancel_fn = async_track_state_change_event(self.hass, all_entites, self._handle_event)
+        else:
+            print("No entities to listen to")
+            self._cancel_fn = None
+
 
 event_listener = None
 
