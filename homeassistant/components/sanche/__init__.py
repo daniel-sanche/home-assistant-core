@@ -67,6 +67,8 @@ class StateChange:
 
 event_listener = None
 
+PLATFORMS = ["binary_sensor"]
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up sanche-test from a config entry."""
     print("start setup entry")
@@ -83,7 +85,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # TODO 3. Store an API object for your platforms to access
     # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
 
-    # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     global event_listener
     if event_listener is None:
         event_listener = HassEventListener(hass)
@@ -96,8 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     print("start unload entry")
-    # if unload_ok := await hass.config_entries.async_unload_platforms(en:
-    #     hass.data[DOMAIN].pop(entry.entry_id)
+    # await hass.config_entries.async_forward_entry_unload(entry, PLATFORMS)
 
     if event_listener is not None:
         event_listener.remove_config_entry(entry)
