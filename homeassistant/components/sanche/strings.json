@@ -2,16 +2,18 @@
   "config": {
     "step": {
       "user": {
-        "title": "Test Title",
+        "title": "Lifeline",
         "data": {
           "url": "URL",
-          "password": "Password"
+          "password": "Password",
+          "entities": "Tracked Entities (leave blank to track all)"
         },
         "data_description": {
-          "url": "Host URL",
-          "password": "Password"
+          "url": "",
+          "password": "",
+          "entities": ""
         },
-        "description": "Test Description"
+        "description": "Enter API information, and entities to track."
       }
     }
   }

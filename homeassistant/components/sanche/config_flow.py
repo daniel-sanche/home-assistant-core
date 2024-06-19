@@ -6,6 +6,10 @@ import logging
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
+)
 
 from .const import DOMAIN
 
@@ -26,10 +30,17 @@ class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
+        # useful schema links:
+        # https://github.com/home-assistant/core/blob/dev/homeassistant/helpers/selector.py
+        # https://www.home-assistant.io/docs/blueprint/selectors
         result = self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
-                {vol.Required("password"): str, vol.Required("url"): str}
+                {
+                    vol.Required("password"): str,
+                    vol.Required("url"): str,
+                    vol.Optional("entities"): EntitySelector(EntitySelectorConfig(multiple=True)),
+                }
             ),
             errors=errors,
         )
