@@ -1,6 +1,8 @@
 """The sanche-test integration."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -14,6 +16,7 @@ class HassEventListener:
         self.hass = hass
         self._listeners = set()
         self._cancel_fn = None
+        self._state_store = {}
 
     @property
     def _is_running(self):
@@ -30,7 +33,15 @@ class HassEventListener:
         self._update_listener()
 
     async def _handle_event(self, event):
-        print(f"Received event: {event}")
+        data_pt = StateChange(
+            entity_id=event.data["entity_id"],
+            new_state=event.data["new_state"].state,
+            timestamp=event.time_fired_timestamp,
+        )
+        old_state = self._state_store.get(data_pt.entity_id, None)
+        if data_pt.new_state != old_state:
+            self._state_store[data_pt.entity_id] = data_pt.new_state
+            print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired})")
 
     def _update_listener(self):
         if self._is_running:
@@ -44,6 +55,12 @@ class HassEventListener:
         else:
             print("No entities to listen to")
             self._cancel_fn = None
+
+@dataclass
+class StateChange:
+    entity_id: str
+    new_state: str
+    timestamp: float
 
 
 event_listener = None
