@@ -1,5 +1,6 @@
 from flask import Flask, request
 import pymongo
+import os
 
 app = Flask(__name__)
 
@@ -14,7 +15,16 @@ timeline_collection.create_index("entity_id")
 def hello_world():
     return 'Hello, World!'
 
+def require_password(func):
+    def wrapper(*args, **kwargs):
+        data = request.get_json()
+        if data is None or data.get('password') != app.config['PASSWORD']:
+            return "ERROR: Unauthorized", 401
+        return func(*args, **kwargs)
+    return wrapper
+
 @app.route('/new_data', methods=['POST'])
+@require_password
 def new_data():
     data = request.get_json()
     entity_id = data['entity_id']
@@ -50,7 +60,11 @@ def get_data():
     return str(db.list_collection_names())
 
 if __name__ == '__main__':
-    port = 7070
+    password = os.environ.get('PASSWORD')
+    if password is None:
+        raise ValueError("PASSWORD environment variable not set")
+    app.config['PASSWORD'] = password
+    port = os.environ.get('PORT', 7070)
     app.run(host='0.0.0.0', port=port)
     # start mongo with:
     # docker run -p 27017:27017 -it mongo:latest
