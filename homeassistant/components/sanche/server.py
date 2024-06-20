@@ -59,6 +59,10 @@ def get_data():
     # return size of database
     return str(db.list_collection_names())
 
+@app.route('/health', methods=['GET'])
+def health():
+    return "OK"
+
 if __name__ == '__main__':
     password = os.environ.get('PASSWORD')
     if password is None:
