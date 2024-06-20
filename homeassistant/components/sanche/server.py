@@ -65,6 +65,15 @@ if __name__ == '__main__':
         raise ValueError("PASSWORD environment variable not set")
     app.config['PASSWORD'] = password
     port = os.environ.get('PORT', 7070)
-    app.run(host='0.0.0.0', port=port)
+    # to generate ssl keys:
+    # openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+    if os.environ.get('USE_SSL', False):
+        if os.path.exists('cert.pem') and os.path.exists('key.pem'):
+            print("Using SSL")
+            app.run(host='0.0.0.0', port=7070, ssl_context=('cert.pem', 'key.pem'))
+        else:
+            raise ValueError("cert.pem or key.pem not found")
+    else:
+        app.run(host='0.0.0.0', port=port)
     # start mongo with:
     # docker run -p 27017:27017 -it mongo:latest
