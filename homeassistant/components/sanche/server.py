@@ -11,6 +11,8 @@ timeline_collection = db["timeline"]
 timeline_collection.create_index("start_time")
 timeline_collection.create_index("entity_id")
 
+entity_cache = {}
+
 @app.route('/')
 def hello_world():
     return 'Hello, World!'
@@ -23,13 +25,21 @@ def require_password(func):
         return func(*args, **kwargs)
     return wrapper
 
+def get_latest_entry(entity_id):
+    latest = entity_cache.get(entity_id)
+    if latest is None:
+        latest = timeline_collection.find_one({"entity_id": entity_id}, sort=[("start_time", pymongo.DESCENDING)])
+        entity_cache[entity_id] = latest
+    return latest
+
+
 @app.route('/new_data', methods=['POST'])
 @require_password
 def new_data():
     data = request.get_json()
     entity_id = data['entity_id']
     # find most recent entry for entity_id
-    most_recent = timeline_collection.find_one(sort=[("start_time", pymongo.DESCENDING)])
+    most_recent = get_latest_entry(entity_id)
     if most_recent is not None:
         if data["prev_uid"] != most_recent["_id"]:
             return "ERROR: prev_uid must match most recent entry", 400
