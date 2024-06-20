@@ -4,7 +4,8 @@ import os
 
 app = Flask(__name__)
 
-mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+mongo_port = os.environ.get('MONGO_PORT', 27017)
+mongo_client = pymongo.MongoClient(f"mongodb://localhost:{mongo_port}/")
 db = mongo_client["lifeline"]
 timeline_collection = db["timeline"]
 # add indices
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     if os.environ.get('USE_SSL', False):
         if os.path.exists('cert.pem') and os.path.exists('key.pem'):
             print("Using SSL")
-            app.run(host='0.0.0.0', port=7070, ssl_context=('cert.pem', 'key.pem'))
+            app.run(host='0.0.0.0', port=port, ssl_context=('cert.pem', 'key.pem'))
         else:
             raise ValueError("cert.pem or key.pem not found")
     else:
