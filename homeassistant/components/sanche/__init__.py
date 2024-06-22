@@ -20,6 +20,7 @@ class HassEventListener:
         self._cancel_fn = None
         self._state_store: dict[str, StateChange] = {}
         self.start()
+        self.owned_entities = []
 
 
     def start(self):
@@ -53,9 +54,6 @@ class StateChange:
     timestamp: float
 
 
-event_listener = None
-lisner_store : dict[ConfigEntry, HassEventListener] = {}
-
 PLATFORMS = ["binary_sensor"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -72,13 +70,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # TODO 1. Create API instance
     # TODO 2. Validate the API connection (and authentication)
     # TODO 3. Store an API object for your platforms to access
-    # hass.data[DOMAIN][entry.entry_id] = MyApi(...)
-
+    hass.data[DOMAIN][entry.entry_id] = HassEventListener(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    if lisner_store.get(entry):
-        lisner_store[entry].stop()
-    lisner_store[entry] = HassEventListener(hass, entry)
 
     print("end setup entry")
     return True
@@ -89,9 +82,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     print("start unload entry")
     # await hass.config_entries.async_forward_entry_unload(entry, PLATFORMS)
 
-    if lisner_store.get(entry):
-        lisner_store[entry].stop()
-        lisner_store.pop(entry)
+    hass.data[DOMAIN][entry.entry_id].stop()
+    hass.data[DOMAIN].pop(entry.entry_id)
 
     print("end unload entry")
     return True

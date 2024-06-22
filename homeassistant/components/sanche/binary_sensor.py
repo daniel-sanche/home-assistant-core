@@ -23,12 +23,12 @@ from .const import DOMAIN
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the binary_sensor platform."""
     print("async_setup_entry")
-    async_add_entities([HostReachableSensor(entry)])
+    api_obj = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([HostReachableSensor(entry, api_obj)])
 
 # async def async_will_remove_from_hass(hass, entry):
 #     """Cleanup when removed."""
 #     print("async_will_remove_from_hass")
-    # hass.data[DOMAIN].remove_config_entry(entry)
 
 class HostReachableSensor(BinarySensorEntity):
 
