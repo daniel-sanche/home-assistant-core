@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import partial
+import requests
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -10,12 +12,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import TrackStates, async_track_state_change_event
 from homeassistant.components.recorder import history
 
+
 from .const import DOMAIN
 
 class HassEventListener:
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.hass = hass
+        self.host = entry.data["url"]
+        self.password = entry.data["password"]
         self.entities = entry.data["entities"]
         self._cancel_fn = None
         self._state_store: dict[str, StateChange] = {}
@@ -45,7 +50,21 @@ class HassEventListener:
         # old_state = self._state_store.get(data_pt.entity_id, None)
         # if data_pt.new_state != old_state:
         #     self._state_store[data_pt.entity_id] = data_pt.new_state
-        print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired})")
+        print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired}, id: {event.context.id})")
+        req_url = f"{self.host}/new_data"
+        req_partial = partial(
+            requests.post,
+            req_url, 
+            json={
+                "password": self.password,
+                "entity_id": event.data["entity_id"],
+                "value": event.data["new_state"].state,
+                "start_time": str(event.time_fired),
+                "uid": event.context.id,
+            },
+            headers={"Content-Type": "application/json"})
+        result = await self.hass.async_add_executor_job(req_partial)
+        print(result.text)
 
 @dataclass
 class StateChange:

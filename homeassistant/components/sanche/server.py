@@ -43,13 +43,13 @@ def new_data():
     entity_id = data['entity_id']
     # find most recent entry for entity_id
     most_recent = get_latest_entry(entity_id)
-    if most_recent is not None:
-        if data["prev_uid"] != most_recent["_id"]:
-            print(f"ERROR: prev_uid must match most recent entry: {data['prev_uid']} != {most_recent['_id']}")
-            return "ERROR: prev_uid must match most recent entry", 400
-        if data["start_time"] <= most_recent["start_time"]:
-            print(f"ERROR: start_time must be greater than most recent entry: {data['start_time']} <= {most_recent['start_time']}")
-            return "ERROR: start_time must be greater than most recent entry", 400
+    # if most_recent is not None:
+    #     if data["prev_uid"] != most_recent["_id"]:
+    #         print(f"ERROR: prev_uid must match most recent entry: {data['prev_uid']} != {most_recent['_id']}")
+    #         return "ERROR: prev_uid must match most recent entry", 400
+    #     if data["start_time"] <= most_recent["start_time"]:
+    #         print(f"ERROR: start_time must be greater than most recent entry: {data['start_time']} <= {most_recent['start_time']}")
+    #         return "ERROR: start_time must be greater than most recent entry", 400
     formatted_data = {
         "_id": data["uid"],
         "entity_id": data["entity_id"],
@@ -61,7 +61,7 @@ def new_data():
 
     # print the size of the collection
     print(db[entity_id].count_documents({}))
-    print(f"Latest entry for {entity_id}: {get_latest_entry(entity_id)}")
+    print(f"Wrote entry for {entity_id}: {data['value']} - {data['uid']}")
     return "OK"
 
 @app.route('/get_data', methods=['GET'])
