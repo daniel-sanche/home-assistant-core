@@ -25,6 +25,8 @@ class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
+                if not user_input["url"].startswith("http"):
+                    user_input["url"] = f"http://{user_input['url']}"
                 await validate_input(self.hass, user_input)
                 return self.async_create_entry(title=user_input["url"], data=user_input)
             except Exception:  # pylint: disable=broad-except
