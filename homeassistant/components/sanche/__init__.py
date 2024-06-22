@@ -14,49 +14,37 @@ from .const import DOMAIN
 
 class HassEventListener:
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.hass = hass
-        self._listeners = set()
+        self.entities = entry.data["entities"]
         self._cancel_fn = None
-        self._state_store = {}
+        self._state_store: dict[str, StateChange] = {}
+        self.start()
+
+
+    def start(self):
+        if not self._is_running:
+            self._cancel_fn = async_track_state_change_event(self.hass, self.entities, self._handle_event)
+
+    def stop(self):
+        if self._is_running:
+            self._cancel_fn()
+            self._cancel_fn = None
 
     @property
     def _is_running(self):
         return self._cancel_fn is not None
 
-    def register_config_entry(self, entry: ConfigEntry):
-        print(f"register_config_entry: {entry}")
-        self._listeners.add(entry)
-        self._update_listener()
-
-    def remove_config_entry(self, entry: ConfigEntry):
-        print(f"remove_config_entry: {entry}")
-        self._listeners.remove(entry)
-        self._update_listener()
-
     async def _handle_event(self, event):
-        data_pt = StateChange(
-            entity_id=event.data["entity_id"],
-            new_state=event.data["new_state"].state,
-            timestamp=event.time_fired_timestamp,
-        )
-        old_state = self._state_store.get(data_pt.entity_id, None)
-        if data_pt.new_state != old_state:
-            self._state_store[data_pt.entity_id] = data_pt.new_state
-            print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired})")
-
-    def _update_listener(self):
-        if self._is_running:
-            self._cancel_fn()
-        all_entites = set()
-        for entry in self._listeners:
-            all_entites.update(entry.data["entities"])
-        if all_entites:
-            print(f"Listening to entities: {all_entites}")
-            self._cancel_fn = async_track_state_change_event(self.hass, all_entites, self._handle_event)
-        else:
-            print("No entities to listen to")
-            self._cancel_fn = None
+        # data_pt = StateChange(
+        #     entity_id=event.data["entity_id"],
+        #     new_state=event.data["new_state"].state,
+        #     timestamp=event.time_fired_timestamp,
+        # )
+        # old_state = self._state_store.get(data_pt.entity_id, None)
+        # if data_pt.new_state != old_state:
+        #     self._state_store[data_pt.entity_id] = data_pt.new_state
+        print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired})")
 
 @dataclass
 class StateChange:
@@ -66,6 +54,7 @@ class StateChange:
 
 
 event_listener = None
+lisner_store : dict[ConfigEntry, HassEventListener] = {}
 
 PLATFORMS = ["binary_sensor"]
 
@@ -87,10 +76,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    global event_listener
-    if event_listener is None:
-        event_listener = HassEventListener(hass)
-    event_listener.register_config_entry(entry)
+    if lisner_store.get(entry):
+        lisner_store[entry].stop()
+    lisner_store[entry] = HassEventListener(hass, entry)
 
     print("end setup entry")
     return True
@@ -101,8 +89,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     print("start unload entry")
     # await hass.config_entries.async_forward_entry_unload(entry, PLATFORMS)
 
-    if event_listener is not None:
-        event_listener.remove_config_entry(entry)
+    if lisner_store.get(entry):
+        lisner_store[entry].stop()
+        lisner_store.pop(entry)
 
     print("end unload entry")
     return True
