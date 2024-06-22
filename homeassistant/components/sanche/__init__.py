@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import TrackStates, async_track_state_change_event
 from homeassistant.components.recorder import history
 
-
 from .const import DOMAIN
 
 class HassEventListener:
@@ -26,7 +25,7 @@ class HassEventListener:
         self._state_store: dict[str, StateChange] = {}
         self.start()
         self.owned_entities = []
-
+        self.last_response = None
 
     def start(self):
         if not self._is_running:
@@ -63,8 +62,11 @@ class HassEventListener:
                 "uid": event.context.id,
             },
             headers={"Content-Type": "application/json"})
-        result = await self.hass.async_add_executor_job(req_partial)
-        print(result.text)
+        try:
+            self.last_response = await self.hass.async_add_executor_job(req_partial)
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error to {req_url}")
+            self.last_response = None
 
 @dataclass
 class StateChange:

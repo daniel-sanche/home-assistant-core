@@ -32,10 +32,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 class HostReachableSensor(BinarySensorEntity):
 
-    def __init__(self, entry):
+    def __init__(self, entry, api_obj):
         self._state = False
         self._host = entry.data["url"]
         self._entry_id = entry.entry_id
+        self._api_obj = api_obj
 
     @property
     def name(self):
@@ -46,8 +47,9 @@ class HostReachableSensor(BinarySensorEntity):
         return self._state
 
     def update(self):
-        self._state = False
-        print("HostReachableSensor.update")
+        last_response = self._api_obj.last_response
+        self._state = last_response is not None and last_response.status_code == 200
+        print(f"HostReachableSensor.update: {self._state} (last_response: {last_response})")
 
     @property
     def unique_id(self) -> str:
