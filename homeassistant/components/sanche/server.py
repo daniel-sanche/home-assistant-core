@@ -1,6 +1,7 @@
 from flask import Flask, request
 import pymongo
 import os
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -19,6 +20,7 @@ def hello_world():
     return 'Hello, World!'
 
 def require_password(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         data = request.get_json()
         if data is None or data.get('password') != app.config['PASSWORD']:
@@ -72,6 +74,11 @@ def get_data():
 
 @app.route('/health', methods=['GET'])
 def health():
+    return "OK"
+
+@app.route('/auth', methods=['POST'])
+@require_password
+def auth():
     return "OK"
 
 if __name__ == '__main__':
