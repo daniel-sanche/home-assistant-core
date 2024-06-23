@@ -45,6 +45,64 @@ class HassEventListener:
     def _is_running(self):
         return self._cancel_fn is not None
 
+    async def restore_last_update_time(self) -> bool:
+        """
+        Restore the last_update_time from the history database.
+
+        last_update_time represents the last time we communicated with the host.
+        """
+        # should be run after: hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        state_dict = await self.hass.async_add_executor_job(
+            history.get_last_state_changes,
+            self.hass,
+            20,
+            self.last_update_sensor.entity_id,
+        )
+        # filter out invalid timestamp values
+        last_updates = [dt_util.parse_datetime(update.state) for update in state_dict.get(self.last_update_sensor.entity_id, []) if update.state != "unknown" and update.state and update.state != "unavailable"]
+        last_updates = [update for update in last_updates if update is not None]
+        # set last update time to the most recent, if one was found
+        if last_updates:
+            self.last_packet_time = last_updates[-1]
+            return True
+        return False
+
+    async def find_events_since_last_update(self, with_flush=True) -> bool:
+        """
+        Search the history database for any state changes that occurred 
+        since we last spoke with the host. This lets us send mising data even after 
+        a restart/host downtime.
+        """
+        if self.last_packet_time is None:
+            return False
+        for entity_id in self.entities:
+            # https://github.com/home-assistant/core/blob/6a3778c48eb0db8cbc59406f27367646e4dbc7f3/homeassistant/components/recorder/history/__init__.py#L155
+            entity_history = await self.hass.async_add_executor_job(
+                history.state_changes_during_period, 
+                self.hass,
+                self.last_packet_time,
+                dt_util.utcnow(),
+                entity_id,
+                True,
+            )
+            found_events = entity_history[entity_id]
+            prev_event = None
+            found_changes = []
+            for event in found_events:
+                if prev_event is None or event.state != prev_event.state:
+                    state_change = StateChange(entity_id=entity_id, new_state=event.state, timestamp=event.last_changed_timestamp)
+                    if state_change.uid not in [state.uid for state in self._event_queue]:
+                        found_changes.append(state_change)
+                        prev_event = event
+            # update internal state with found changes
+            self._event_queue.extend(found_changes)
+            if found_changes:
+                print(f"Found {len(found_changes)} changes for {entity_id}")
+                if with_flush:
+                    await self.flush_queue()
+                return True
+        return False
+
     async def _handle_event(self, event):
         if event.data["old_state"] is not None and event.data["new_state"].state == event.data["old_state"].state:
             return
@@ -114,38 +172,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     listener = HassEventListener(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = listener
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    # find previous update time
-    state_dict = await hass.async_add_executor_job(
-        history.get_last_state_changes,
-        hass,
-        20,
-        listener.last_update_sensor.entity_id,
-    )
-    last_updates = [dt_util.parse_datetime(update.state) for update in state_dict.get(listener.last_update_sensor.entity_id, []) if update.state != "unknown" and update.state and update.state != "unavailable"]
-    last_updates = [update for update in last_updates if update is not None]
-    if last_updates:
-        listener.last_packet_time = last_updates[-1]
-        # get changes since last update
-        # https://github.com/home-assistant/core/blob/6a3778c48eb0db8cbc59406f27367646e4dbc7f3/homeassistant/components/recorder/history/__init__.py#L155
-        for entity_id in entry.data["entities"]:
-            entity_history = await hass.async_add_executor_job(
-                history.state_changes_during_period, 
-                hass,
-                listener.last_packet_time,
-                dt_util.utcnow(),
-                entity_id,
-                True,
-            )
-            found_events = entity_history[entity_id]
-            prev_event = None
-            for event in found_events:
-                if prev_event is None or event.state != prev_event.state:
-                    state_change = StateChange(entity_id=entity_id, new_state=event.state, timestamp=event.last_changed_timestamp)
-                    if state_change.uid not in [state.uid for state in listener._event_queue]:
-                        listener._event_queue.append(state_change)
-                        prev_event = event
-    # print(listener._event_queue)
 
+    # get changes since last update
+    await listener.restore_last_update_time()
+    await listener.find_events_since_last_update()
+    # start listening for new events
     listener.start()
 
     print("end setup entry")
