@@ -39,6 +39,7 @@ class HassEventListener:
 
     def start(self):
         if not self._is_running:
+            print(f"Listening for state changes on {self.entities}")
             self._cancel_fn = async_track_state_change_event(
                 self.hass, self.entities, self._handle_event
             )
@@ -51,6 +52,16 @@ class HassEventListener:
     @property
     def _is_running(self):
         return self._cancel_fn is not None
+
+    def restart_with_entities(self, entities):
+        was_running = self._is_running
+        if was_running:
+            self.stop()
+        self.entities = entities
+        # filter out unset events that are not in the new entity list
+        self._event_queue = [e for e in self._event_queue if e.entity_id in entities]
+        if was_running:
+            self.start()
 
     async def restore_last_update_time(self) -> bool:
         """Restore the last_update_time from the history database.

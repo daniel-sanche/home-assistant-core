@@ -51,3 +51,20 @@ class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
         return result
+
+    async def async_step_reconfigure(self, user_input=None):
+        errors = {}
+        previous_data = self.hass.data[DOMAIN][self.context["entry_id"]]
+        if user_input is not None:
+            previous_data.restart_with_entities(user_input["entities"])
+            return self.async_abort(reason="reconfigured successfully")
+        result = self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("entities", default=previous_data.entities): EntitySelector(EntitySelectorConfig(multiple=True)),
+                }
+            ),
+            errors=errors,
+        )
+        return result
