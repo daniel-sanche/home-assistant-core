@@ -46,8 +46,10 @@ class LastUpdateSensor(SensorEntity):
     def name(self):
         return "Last Update"
 
-    def push_value(self, value):
+    def push_value(self, value, extra_attributes=None):
         print(f"LastUpdateSensor.update: {value}")
         self._attr_native_value = value
+        if extra_attributes:
+            self._attr_extra_state_attributes = extra_attributes
         self.schedule_update_ha_state()
 

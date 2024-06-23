@@ -170,7 +170,7 @@ class HassEventListener:
                 self.last_response = await self.hass.async_add_executor_job(req_partial)
                 if self.last_response.status_code == 200:
                     self.last_packet_time = dt_util.utcnow()
-                    self.last_update_sensor.push_value(self.last_packet_time)
+                    self.last_update_sensor.push_value(self.last_packet_time, extra_attributes={"tracked_entities": ",".join(self.entities), "pushed_entities": state.entity_id, "uid": state.uid, "num_tracked_entities": len(self.entities)})
                     self._event_queue.pop(0)
                 else:
                     print(f"Flush Error: {self.last_response.status_code}")
@@ -182,7 +182,8 @@ class HassEventListener:
             finally:
                 self.host_reachable_sensor.push_value(
                     self.last_response is not None
-                    and self.last_response.status_code == 200
+                    and self.last_response.status_code == 200,
+                    extra_attributes={"queue_size": len(self._event_queue)},
                 )
 
     async def _heartbeat(self, now):

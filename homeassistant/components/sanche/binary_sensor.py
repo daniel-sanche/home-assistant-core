@@ -37,10 +37,11 @@ class HostReachableSensor(BinarySensorEntity):
     def should_poll(self):
         return False
 
-    def push_value(self, value):
+    def push_value(self, value, extra_attributes=None):
         print(f"HostReachableSensor.update: {value}")
-        if value != self._state:
+        if value != self._state or extra_attributes != self._attr_extra_state_attributes:
             self._state = value
+            self._attr_extra_state_attributes = extra_attributes
             self.schedule_update_ha_state()
 
     @property
