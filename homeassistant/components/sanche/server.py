@@ -78,6 +78,11 @@ def get_data():
 def health():
     return "OK"
 
+@app.route('/heartbeat', methods=['GET'])
+def heartbeat():
+    # check-in from server to indicate that data is still active
+    return "OK"
+
 @app.route('/auth', methods=['POST'])
 @require_password
 def auth():

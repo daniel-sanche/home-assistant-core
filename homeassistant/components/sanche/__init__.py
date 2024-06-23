@@ -19,7 +19,7 @@ from .const import DOMAIN
 
 class HassEventListener:
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, heartbeat_minutes=5):
         self.hass = hass
         self.host = entry.data["url"]
         self.password = entry.data["password"]
@@ -31,6 +31,8 @@ class HassEventListener:
         self.last_packet_time = None
         self.host_reachable_sensor = HostReachableSensor(entry, self)
         self.last_update_sensor = LastUpdateSensor(entry, self)
+        # create a regular polling timer to send heartbeat
+        self.hass.helpers.event.async_track_time_interval(self._heartbeat, timedelta(minutes=heartbeat_minutes))
 
     def start(self):
         if not self._is_running:
@@ -147,6 +149,24 @@ class HassEventListener:
                 return
             finally:
                 self.host_reachable_sensor.push_value(self.last_response is not None and self.last_response.status_code == 200)
+
+    async def _heartbeat(self, now):
+        print("Heartbeat")
+        if self._event_queue:
+            # don't send heartbeat if we have events that we haven't sent yet
+            print(f"Skipping heartbeat, {len(self._event_queue)} events in queue")
+            await self.flush_queue()
+            return
+        req_url = f"{self.host}/heartbeat"
+        try:
+            self.last_response = await self.hass.async_add_executor_job(requests.get, req_url)
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error to {req_url}")
+            self.last_response = None
+            return
+        finally:
+            self.host_reachable_sensor.push_value(self.last_response is not None and self.last_response.status_code == 200)
+
 
 @dataclass
 class StateChange:
