@@ -25,8 +25,7 @@ class HassEventListener:
         self.password = entry.data["password"]
         self.entities = entry.data["entities"]
         self._cancel_fn = None
-        self._state_store: dict[str, StateChange] = {}
-        self.start()
+        self._event_queue = []
         self.owned_entities = []
         self.last_response = None
         self.last_packet_time = None
@@ -47,36 +46,49 @@ class HassEventListener:
         return self._cancel_fn is not None
 
     async def _handle_event(self, event):
-        # data_pt = StateChange(
-        #     entity_id=event.data["entity_id"],
-        #     new_state=event.data["new_state"].state,
-        #     timestamp=event.time_fired_timestamp,
-        # )
-        # old_state = self._state_store.get(data_pt.entity_id, None)
-        # if data_pt.new_state != old_state:
-        #     self._state_store[data_pt.entity_id] = data_pt.new_state
-        print(f"State change: {event.data['entity_id']}: {event.data['new_state'].state} ({event.time_fired}, id: {event.context.id})")
-        req_url = f"{self.host}/new_data"
-        req_partial = partial(
-            requests.post,
-            req_url, 
-            json={
-                "password": self.password,
-                "entity_id": event.data["entity_id"],
-                "value": event.data["new_state"].state,
-                "start_time": str(event.time_fired),
-                "uid": event.context.id,
-            },
-            headers={"Content-Type": "application/json"})
-        try:
-            self.last_response = await self.hass.async_add_executor_job(req_partial)
-            if self.last_response.status_code == 200:
-                self.last_packet_time = dt_util.utcnow()
-                self.last_update_sensor.push_value(self.last_packet_time)
-        except requests.exceptions.ConnectionError:
-            print(f"Connection error to {req_url}")
-            self.last_response = None
-            self.host_reachable_sensor.push_value(self.last_response is not None and self.last_response.status_code == 200)
+        if event.data["old_state"] is not None and event.data["new_state"].state == event.data["old_state"].state:
+            return
+        state_change = StateChange(
+            entity_id=event.data["entity_id"],
+            new_state=event.data["new_state"].state,
+            timestamp=event.time_fired_timestamp,
+        )
+        if state_change.uid in [state.uid for state in self._event_queue]:
+            return
+        print(f"State change: {state_change.entity_id}: {state_change.new_state} ({state_change.timestamp}, id: {state_change.uid})")
+        self._event_queue.append(state_change)
+        await self.flush_queue()
+
+    async def flush_queue(self):
+        while self._event_queue:
+            state = self._event_queue[0]
+            req_url = f"{self.host}/new_data"
+            req_partial = partial(
+                requests.post,
+                req_url, 
+                json={
+                    "password": self.password,
+                    "entity_id": state.entity_id,
+                    "value": state.new_state,
+                    "start_time": state.timestamp,
+                    "uid": state.uid,
+                },
+                headers={"Content-Type": "application/json"})
+            try:
+                self.last_response = await self.hass.async_add_executor_job(req_partial)
+                if self.last_response.status_code == 200:
+                    self.last_packet_time = dt_util.utcnow()
+                    self.last_update_sensor.push_value(self.last_packet_time)
+                    self._event_queue.pop(0)
+                else:
+                    print(f"Flush Error: {self.last_response.status_code}")
+                    return
+            except requests.exceptions.ConnectionError:
+                print(f"Connection error to {req_url}")
+                self.last_response = None
+                return
+            finally:
+                self.host_reachable_sensor.push_value(self.last_response is not None and self.last_response.status_code == 200)
 
 @dataclass
 class StateChange:
@@ -84,25 +96,57 @@ class StateChange:
     new_state: str
     timestamp: float
 
+    @property
+    def uid(self):
+        return str(abs(hash(self.entity_id + self.new_state + str(self.timestamp))))
+
 
 PLATFORMS = ["binary_sensor", "sensor"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up sanche-test from a config entry."""
     print("start setup entry")
-    # history_dict = {}
-    # for entity_id in entry.data["entities"]:
-    #     print(entity_id)
-    #     # https://github.com/home-assistant/core/blob/6a3778c48eb0db8cbc59406f27367646e4dbc7f3/homeassistant/components/recorder/history/__init__.py#L155
-    #     entity_history = await hass.async_add_executor_job(history.state_changes_during_period, hass, (datetime.now()- timedelta(days=1)).astimezone(), datetime.now().astimezone(), entity_id, True)
-    #     history_dict.update(entity_history)
 
     hass.data.setdefault(DOMAIN, {})
     # TODO 1. Create API instance
     # TODO 2. Validate the API connection (and authentication)
     # TODO 3. Store an API object for your platforms to access
-    hass.data[DOMAIN][entry.entry_id] = HassEventListener(hass, entry)
+    listener = HassEventListener(hass, entry)
+    hass.data[DOMAIN][entry.entry_id] = listener
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # find previous update time
+    state_dict = await hass.async_add_executor_job(
+        history.get_last_state_changes,
+        hass,
+        20,
+        listener.last_update_sensor.entity_id,
+    )
+    last_updates = [dt_util.parse_datetime(update.state) for update in state_dict.get(listener.last_update_sensor.entity_id, []) if update.state != "unknown" and update.state and update.state != "unavailable"]
+    last_updates = [update for update in last_updates if update is not None]
+    if last_updates:
+        listener.last_packet_time = last_updates[-1]
+        # get changes since last update
+        # https://github.com/home-assistant/core/blob/6a3778c48eb0db8cbc59406f27367646e4dbc7f3/homeassistant/components/recorder/history/__init__.py#L155
+        for entity_id in entry.data["entities"]:
+            entity_history = await hass.async_add_executor_job(
+                history.state_changes_during_period, 
+                hass,
+                listener.last_packet_time,
+                dt_util.utcnow(),
+                entity_id,
+                True,
+            )
+            found_events = entity_history[entity_id]
+            prev_event = None
+            for event in found_events:
+                if prev_event is None or event.state != prev_event.state:
+                    state_change = StateChange(entity_id=entity_id, new_state=event.state, timestamp=event.last_changed_timestamp)
+                    if state_change.uid not in [state.uid for state in listener._event_queue]:
+                        listener._event_queue.append(state_change)
+                        prev_event = event
+    # print(listener._event_queue)
+
+    listener.start()
 
     print("end setup entry")
     return True

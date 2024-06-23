@@ -1,13 +1,7 @@
 from __future__ import annotations
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-)
-from homeassistant.const import UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import DOMAIN
 
@@ -18,12 +12,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     api_obj = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([api_obj.host_reachable_sensor])
 
+
 # async def async_will_remove_from_hass(hass, entry):
 #     """Cleanup when removed."""
 #     print("async_will_remove_from_hass")
 
-class HostReachableSensor(BinarySensorEntity):
 
+class HostReachableSensor(BinarySensorEntity):
     def __init__(self, entry, api_obj):
         self._state = False
         self._host = entry.data["url"]
@@ -42,13 +37,11 @@ class HostReachableSensor(BinarySensorEntity):
     def should_poll(self):
         return False
 
-
     def push_value(self, value):
         print(f"HostReachableSensor.update: {value}")
         if value != self._state:
             self._state = value
             self.schedule_update_ha_state()
-
 
     @property
     def unique_id(self) -> str:
