@@ -13,6 +13,8 @@ from homeassistant.helpers.event import TrackStates, async_track_state_change_ev
 from homeassistant.components.recorder import history
 import homeassistant.util.dt as dt_util
 
+from .binary_sensor import HostReachableSensor
+from .sensor import LastUpdateSensor
 from .const import DOMAIN
 
 class HassEventListener:
@@ -28,6 +30,8 @@ class HassEventListener:
         self.owned_entities = []
         self.last_response = None
         self.last_packet_time = None
+        self.host_reachable_sensor = HostReachableSensor(entry, self)
+        self.last_update_sensor = LastUpdateSensor(entry, self)
 
     def start(self):
         if not self._is_running:
@@ -66,10 +70,13 @@ class HassEventListener:
             headers={"Content-Type": "application/json"})
         try:
             self.last_response = await self.hass.async_add_executor_job(req_partial)
-            self.last_packet_time = dt_util.utcnow()
+            if self.last_response.status_code == 200:
+                self.last_packet_time = dt_util.utcnow()
+                self.last_update_sensor.push_value(self.last_packet_time)
         except requests.exceptions.ConnectionError:
             print(f"Connection error to {req_url}")
             self.last_response = None
+            self.host_reachable_sensor.push_value(self.last_response is not None and self.last_response.status_code == 200)
 
 @dataclass
 class StateChange:

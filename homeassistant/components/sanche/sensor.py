@@ -12,13 +12,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the binary_sensor platform."""
     print("async_setup_entry: sensor")
     api_obj = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([LastUpdateSensor(entry, api_obj)])
+    async_add_entities([api_obj.last_update_sensor])
 
 class LastUpdateSensor(SensorEntity):
     """Representation of an uptime sensor."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_should_poll = True
 
     def __init__(self, entry: ConfigEntry, api_obj) -> None:
         """Initialize the uptime sensor."""
@@ -36,6 +35,10 @@ class LastUpdateSensor(SensorEntity):
         )
 
     @property
+    def should_poll(self):
+        return False
+
+    @property
     def unique_id(self) -> str:
         return f"{self._entry_id}_last_update"
 
@@ -43,7 +46,8 @@ class LastUpdateSensor(SensorEntity):
     def name(self):
         return "Last Update"
 
-    def update(self):
-        self._attr_native_value = self._api_obj.last_packet_time
-        print(f"LastUpdateSensor.update: {self._attr_native_value}")
+    def push_value(self, value):
+        print(f"LastUpdateSensor.update: {value}")
+        self._attr_native_value = value
+        self.schedule_update_ha_state()
 
