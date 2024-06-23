@@ -21,6 +21,10 @@ async def validate_input(hass, data):
 
 
 class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+
+    VERSION = 1
+    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
+
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:

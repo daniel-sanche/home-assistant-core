@@ -6,6 +6,6 @@
 - improve batching (should updates be live by default?)
 - let user change config details without deleting and restarting (add new entities, etc)
     - implement reconfigure? https://developers.home-assistant.io/docs/config_entries_config_flow_handler#reconfigure
-- reloading integration seems to break things
+    - looks like I need to pudate base branch to get the feature
 - implement reauthenticating https://developers.home-assistant.io/docs/config_entries_config_flow_handler#reauthentication
 - fix presubmit checks
