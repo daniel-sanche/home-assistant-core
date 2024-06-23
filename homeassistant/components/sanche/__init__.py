@@ -1,9 +1,10 @@
 """The sanche-test integration."""
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import Callable
+
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta, datetime
 from functools import partial
 
 import requests

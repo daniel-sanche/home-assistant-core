@@ -5,3 +5,7 @@
 - how are hosts uniquely identified? (right now, use the config flow entry as uid)
 - improve batching (should updates be live by default?)
 - let user change config details without deleting and restarting (add new entities, etc)
+    - implement reconfigure? https://developers.home-assistant.io/docs/config_entries_config_flow_handler#reconfigure
+- reloading integration seems to break things
+- implement reauthenticating https://developers.home-assistant.io/docs/config_entries_config_flow_handler#reauthentication
+- fix presubmit checks
