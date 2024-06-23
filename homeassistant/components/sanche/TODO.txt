@@ -1,0 +1,7 @@
+- get ssl support working (e2e encryption)
+- add tests
+- build flutter ui on top of database
+- does the entity naming make sense? (should they be tied to device uid?)
+- how are hosts uniquely identified? (right now, use the config flow entry as uid)
+- improve batching (should updates be live by default?)
+- let user change config details without deleting and restarting (add new entities, etc)
