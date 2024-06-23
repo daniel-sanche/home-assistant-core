@@ -1,4 +1,5 @@
 """Home Assistant representation of an UPnP/IGD."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -37,7 +38,7 @@ def get_preferred_location(locations: set[str]) -> str:
     """Get the preferred location (an IPv4 location) from a set of locations."""
     # Prefer IPv4 over IPv6.
     for location in locations:
-        if location.startswith("http://[") or location.startswith("https://["):
+        if location.startswith(("http://[", "https://[")):
             continue
 
         return location
@@ -73,9 +74,7 @@ async def async_create_device(hass: HomeAssistant, location: str) -> Device:
 
     # Create profile wrapper.
     igd_device = IgdDevice(upnp_device, None)
-    device = Device(hass, igd_device)
-
-    return device
+    return Device(hass, igd_device)
 
 
 class Device:
@@ -85,9 +84,9 @@ class Device:
         """Initialize UPnP/IGD device."""
         self.hass = hass
         self._igd_device = igd_device
-        self.coordinator: DataUpdateCoordinator[
-            dict[str, str | datetime | int | float | None]
-        ] | None = None
+        self.coordinator: (
+            DataUpdateCoordinator[dict[str, str | datetime | int | float | None]] | None
+        ) = None
         self.original_udn: str | None = None
 
     async def async_get_mac_address(self) -> str | None:
@@ -155,14 +154,9 @@ class Device:
     async def async_get_data(self) -> dict[str, str | datetime | int | float | None]:
         """Get all data from device."""
         _LOGGER.debug("Getting data for device: %s", self)
-        igd_state = await self._igd_device.async_get_traffic_and_status_data()
-        status_info = igd_state.status_info
-        if status_info is not None and not isinstance(status_info, BaseException):
-            wan_status = status_info.connection_status
-            router_uptime = status_info.uptime
-        else:
-            wan_status = None
-            router_uptime = None
+        igd_state = await self._igd_device.async_get_traffic_and_status_data(
+            force_poll=True
+        )
 
         def get_value(value: Any) -> Any:
             if value is None or isinstance(value, BaseException):
@@ -176,8 +170,8 @@ class Device:
             BYTES_SENT: get_value(igd_state.bytes_sent),
             PACKETS_RECEIVED: get_value(igd_state.packets_received),
             PACKETS_SENT: get_value(igd_state.packets_sent),
-            WAN_STATUS: wan_status,
-            ROUTER_UPTIME: router_uptime,
+            WAN_STATUS: get_value(igd_state.connection_status),
+            ROUTER_UPTIME: get_value(igd_state.uptime),
             ROUTER_IP: get_value(igd_state.external_ip_address),
             KIBIBYTES_PER_SEC_RECEIVED: igd_state.kibibytes_per_sec_received,
             KIBIBYTES_PER_SEC_SENT: igd_state.kibibytes_per_sec_sent,

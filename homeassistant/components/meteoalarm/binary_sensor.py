@@ -1,4 +1,5 @@
 """Binary Sensor for MeteoAlarm.eu."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -29,7 +30,7 @@ CONF_PROVINCE = "province"
 
 DEFAULT_NAME = "meteoalarm"
 
-SCAN_INTERVAL = timedelta(minutes=30)
+SCAN_INTERVAL = timedelta(minutes=5)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {

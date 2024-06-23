@@ -1,4 +1,5 @@
 """Test different accessory types: Remotes."""
+
 from unittest.mock import patch
 
 import pytest
@@ -132,7 +133,6 @@ async def test_activity_remote(
 
     with pytest.raises(ValueError):
         acc.char_remote_key.client_update_value(20)
-        await hass.async_block_till_done()
 
     acc.char_remote_key.client_update_value(7)
     await hass.async_block_till_done()

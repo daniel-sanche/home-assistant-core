@@ -1,7 +1,9 @@
 """The tests for the Home Assistant HTTP component."""
+
 from datetime import timedelta
 from http import HTTPStatus
 from ipaddress import ip_network
+import logging
 from unittest.mock import Mock, patch
 
 from aiohttp import BasicAuth, web
@@ -13,10 +15,9 @@ import yarl
 from homeassistant.auth.const import GROUP_ID_READ_ONLY
 from homeassistant.auth.models import User
 from homeassistant.auth.providers import trusted_networks
-from homeassistant.auth.providers.legacy_api_password import (
-    LegacyApiPasswordAuthProvider,
-)
+from homeassistant.auth.providers.homeassistant import HassAuthProvider
 from homeassistant.components import websocket_api
+from homeassistant.components.http import KEY_HASS
 from homeassistant.components.http.auth import (
     CONTENT_USER_NAME,
     DATA_SIGN_SECRET,
@@ -41,6 +42,7 @@ from tests.common import MockUser
 from tests.test_util import mock_real_ip
 from tests.typing import ClientSessionGenerator, WebSocketGenerator
 
+_LOGGER = logging.getLogger(__name__)
 API_PASSWORD = "test-password"
 
 # Don't add 127.0.0.1/::1 as trusted, as it may interfere with other test cases
@@ -52,7 +54,13 @@ TRUSTED_NETWORKS = [
 ]
 TRUSTED_ADDRESSES = ["100.64.0.1", "192.0.2.100", "FD01:DB8::1", "2001:DB8:ABCD::1"]
 EXTERNAL_ADDRESSES = ["198.51.100.1", "2001:DB8:FA1::1"]
-UNTRUSTED_ADDRESSES = [*EXTERNAL_ADDRESSES, "127.0.0.1", "::1"]
+LOCALHOST_ADDRESSES = ["127.0.0.1", "::1"]
+UNTRUSTED_ADDRESSES = [*EXTERNAL_ADDRESSES, *LOCALHOST_ADDRESSES]
+PRIVATE_ADDRESSES = [
+    "192.168.10.10",
+    "172.16.4.20",
+    "10.100.50.5",
+]
 
 
 async def mock_handler(request):
@@ -66,19 +74,11 @@ async def mock_handler(request):
     return web.json_response(data={"user_id": user_id})
 
 
-async def get_legacy_user(auth):
-    """Get the user in legacy_api_password auth provider."""
-    provider = auth.get_auth_provider("legacy_api_password", None)
-    return await auth.async_get_or_create_user(
-        await provider.async_get_or_create_credentials({})
-    )
-
-
 @pytest.fixture
 def app(hass):
     """Fixture to set up a web.Application."""
     app = web.Application()
-    app["hass"] = hass
+    app[KEY_HASS] = hass
     app.router.add_get("/", mock_handler)
     async_setup_forwarded(app, True, [])
     return app
@@ -88,7 +88,7 @@ def app(hass):
 def app2(hass):
     """Fixture to set up a web.Application without real_ip middleware."""
     app = web.Application()
-    app["hass"] = hass
+    app[KEY_HASS] = hass
     app.router.add_get("/", mock_handler)
     return app
 
@@ -116,7 +116,7 @@ async def test_auth_middleware_loaded_by_default(hass: HomeAssistant) -> None:
 async def test_cant_access_with_password_in_header(
     app,
     aiohttp_client: ClientSessionGenerator,
-    legacy_auth: LegacyApiPasswordAuthProvider,
+    local_auth: HassAuthProvider,
     hass: HomeAssistant,
 ) -> None:
     """Test access with password in header."""
@@ -133,7 +133,7 @@ async def test_cant_access_with_password_in_header(
 async def test_cant_access_with_password_in_query(
     app,
     aiohttp_client: ClientSessionGenerator,
-    legacy_auth: LegacyApiPasswordAuthProvider,
+    local_auth: HassAuthProvider,
     hass: HomeAssistant,
 ) -> None:
     """Test access with password in URL."""
@@ -154,7 +154,7 @@ async def test_basic_auth_does_not_work(
     app,
     aiohttp_client: ClientSessionGenerator,
     hass: HomeAssistant,
-    legacy_auth: LegacyApiPasswordAuthProvider,
+    local_auth: HassAuthProvider,
 ) -> None:
     """Test access with basic authentication."""
     await async_setup_auth(hass, app)
@@ -268,7 +268,7 @@ async def test_auth_active_access_with_trusted_ip(
 async def test_auth_legacy_support_api_password_cannot_access(
     app,
     aiohttp_client: ClientSessionGenerator,
-    legacy_auth: LegacyApiPasswordAuthProvider,
+    local_auth: HassAuthProvider,
     hass: HomeAssistant,
 ) -> None:
     """Test access using api_password if auth.support_legacy."""

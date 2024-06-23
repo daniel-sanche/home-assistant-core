@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from plugwise.exceptions import PlugwiseError
 import pytest
 
-from homeassistant.components.climate.const import HVACMode
+from homeassistant.components.climate import HVACMode
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.dt import utcnow
@@ -98,9 +98,9 @@ async def test_adam_3_climate_entity_attributes(
         HVACMode.COOL,
     ]
     data = mock_smile_adam_3.async_update.return_value
-    data.devices["da224107914542988a88561b4452b0f6"][
-        "select_regulation_mode"
-    ] = "heating"
+    data.devices["da224107914542988a88561b4452b0f6"]["select_regulation_mode"] = (
+        "heating"
+    )
     data.devices["ad4838d7d35c4d6ea796ee12ae5aedf8"]["control_state"] = "heating"
     data.devices["056ee145a816487eaa69243c3280f8bf"]["binary_sensors"][
         "cooling_state"
@@ -121,9 +121,9 @@ async def test_adam_3_climate_entity_attributes(
         HVACMode.HEAT,
     ]
     data = mock_smile_adam_3.async_update.return_value
-    data.devices["da224107914542988a88561b4452b0f6"][
-        "select_regulation_mode"
-    ] = "cooling"
+    data.devices["da224107914542988a88561b4452b0f6"]["select_regulation_mode"] = (
+        "cooling"
+    )
     data.devices["ad4838d7d35c4d6ea796ee12ae5aedf8"]["control_state"] = "cooling"
     data.devices["056ee145a816487eaa69243c3280f8bf"]["binary_sensors"][
         "cooling_state"
@@ -395,7 +395,7 @@ async def test_anna_climate_entity_climate_changes(
         "c784ee9fdab44e1395b8dee7d7a497d5", "off"
     )
     data = mock_smile_anna.async_update.return_value
-    data.devices["3cb70739631c4d17a86b8b12e8a5161b"]["available_schedules"] = ["None"]
+    data.devices["3cb70739631c4d17a86b8b12e8a5161b"].pop("available_schedules")
     with patch(HA_PLUGWISE_SMILE_ASYNC_UPDATE, return_value=data):
         async_fire_time_changed(hass, utcnow() + timedelta(minutes=1))
         await hass.async_block_till_done()

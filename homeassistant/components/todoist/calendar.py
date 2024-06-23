@@ -1,4 +1,5 @@
 """Support for Todoist task management (https://todoist.com)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -65,6 +66,7 @@ _LOGGER = logging.getLogger(__name__)
 NEW_TASK_SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required(CONTENT): cv.string,
+        vol.Optional(DESCRIPTION): cv.string,
         vol.Optional(PROJECT_NAME, default="inbox"): vol.All(cv.string, vol.Lower),
         vol.Optional(LABELS): cv.ensure_list_csv,
         vol.Optional(ASSIGNEE): cv.string,
@@ -224,6 +226,8 @@ def async_register_services(
         content = call.data[CONTENT]
         data: dict[str, Any] = {"project_id": project_id}
 
+        if description := call.data.get(DESCRIPTION):
+            data["description"] = description
         if task_labels := call.data.get(LABELS):
             data["labels"] = task_labels
 

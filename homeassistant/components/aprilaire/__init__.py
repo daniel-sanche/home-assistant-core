@@ -15,7 +15,11 @@ from homeassistant.helpers.device_registry import format_mac
 from .const import DOMAIN
 from .coordinator import AprilaireCoordinator
 
-PLATFORMS: list[Platform] = [Platform.CLIMATE]
+PLATFORMS: list[Platform] = [
+    Platform.CLIMATE,
+    Platform.SELECT,
+    Platform.SENSOR,
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             coordinator.stop_listen()
 
-            raise ConfigEntryNotReady()
+            raise ConfigEntryNotReady
 
     await coordinator.wait_for_ready(ready_callback)
 
