@@ -1,13 +1,7 @@
 from __future__ import annotations
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
-)
-from homeassistant.const import UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import DOMAIN
 
@@ -20,18 +14,20 @@ from .const import DOMAIN
 #     """Set up the sensor platform."""
 #     add_entities([HostReachableSensor()])
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the binary_sensor platform."""
     print("async_setup_entry")
     api_obj = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([HostReachableSensor(entry, api_obj)])
 
+
 # async def async_will_remove_from_hass(hass, entry):
 #     """Cleanup when removed."""
 #     print("async_will_remove_from_hass")
 
-class HostReachableSensor(BinarySensorEntity):
 
+class HostReachableSensor(BinarySensorEntity):
     def __init__(self, entry, api_obj):
         self._state = False
         self._host = entry.data["url"]
@@ -49,7 +45,9 @@ class HostReachableSensor(BinarySensorEntity):
     def update(self):
         last_response = self._api_obj.last_response
         self._state = last_response is not None and last_response.status_code == 200
-        print(f"HostReachableSensor.update: {self._state} (last_response: {last_response})")
+        print(
+            f"HostReachableSensor.update: {self._state} (last_response: {last_response})"
+        )
 
     @property
     def unique_id(self) -> str:

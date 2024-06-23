@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+
+from .const import DOMAIN
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up the binary_sensor platform."""
+    print("async_setup_entry: sensor")
+    api_obj = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([LastUpdateSensor(entry, api_obj)])
+
+class LastUpdateSensor(SensorEntity):
+    """Representation of an uptime sensor."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_should_poll = True
+
+    def __init__(self, entry: ConfigEntry, api_obj) -> None:
+        """Initialize the uptime sensor."""
+        self._host = entry.data["url"]
+        self._entry_id = entry.entry_id
+        self._api_obj = api_obj
+        self._attr_native_value = api_obj.last_packet_time
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        # https://developers.home-assistant.io/docs/device_registry_index#automatic-registration-through-an-entity
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._host, self._entry_id)},
+            name=f"Lifeline {self._host}",
+        )
+
+    @property
+    def unique_id(self) -> str:
+        return f"{self._entry_id}_last_update"
+
+    @property
+    def name(self):
+        return "Last Update"
+
+    def update(self):
+        self._attr_native_value = self._api_obj.last_packet_time
+        print(f"LastUpdateSensor.update: {self._attr_native_value}")
+

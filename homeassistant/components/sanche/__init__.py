@@ -11,6 +11,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import TrackStates, async_track_state_change_event
 from homeassistant.components.recorder import history
+import homeassistant.util.dt as dt_util
 
 from .const import DOMAIN
 
@@ -26,6 +27,7 @@ class HassEventListener:
         self.start()
         self.owned_entities = []
         self.last_response = None
+        self.last_packet_time = None
 
     def start(self):
         if not self._is_running:
@@ -64,6 +66,7 @@ class HassEventListener:
             headers={"Content-Type": "application/json"})
         try:
             self.last_response = await self.hass.async_add_executor_job(req_partial)
+            self.last_packet_time = dt_util.utcnow()
         except requests.exceptions.ConnectionError:
             print(f"Connection error to {req_url}")
             self.last_response = None
@@ -75,7 +78,7 @@ class StateChange:
     timestamp: float
 
 
-PLATFORMS = ["binary_sensor"]
+PLATFORMS = ["binary_sensor", "sensor"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up sanche-test from a config entry."""
