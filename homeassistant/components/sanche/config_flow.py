@@ -56,8 +56,12 @@ class ExampleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         previous_data = self.hass.data[DOMAIN][self.context["entry_id"]]
         if user_input is not None:
-            previous_data.restart_with_entities(user_input["entities"])
-            return self.async_abort(reason="reconfigured successfully")
+            success = previous_data.restart_with_entities(user_input["entities"])
+            if success:
+                msg = "reconfigured successfully"
+            else:
+                msg = "reconfiguration failed"
+            return self.async_abort(reason=msg)
         result = self.async_show_form(
             step_id="reconfigure",
             data_schema=vol.Schema(

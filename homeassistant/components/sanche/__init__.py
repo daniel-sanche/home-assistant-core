@@ -23,9 +23,7 @@ from .sensor import LastUpdateSensor
 class HassEventListener:
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, heartbeat_minutes=5):
         self.hass = hass
-        self.host = entry.data["url"]
-        self.password = entry.data["password"]
-        self.entities = entry.data["entities"]
+        self.entry = entry
         self._cancel_fn: Callable | None = None
         self._event_queue: list[StateChange] = []
         self.last_response = None
@@ -36,6 +34,18 @@ class HassEventListener:
         self.hass.helpers.event.async_track_time_interval(
             self._heartbeat, timedelta(minutes=heartbeat_minutes)
         )
+
+    @property
+    def host(self):
+        return self.entry.data["url"]
+
+    @property
+    def password(self):
+        return self.entry.data["password"]
+
+    @property
+    def entities(self):
+        return self.entry.data["entities"]
 
     def start(self):
         if not self._is_running:
@@ -53,15 +63,19 @@ class HassEventListener:
     def _is_running(self):
         return self._cancel_fn is not None
 
-    def restart_with_entities(self, entities):
+    def restart_with_entities(self, entities) -> bool:
         was_running = self._is_running
         if was_running:
             self.stop()
-        self.entities = entities
-        # filter out unset events that are not in the new entity list
-        self._event_queue = [e for e in self._event_queue if e.entity_id in entities]
+        success = self.hass.config_entries.async_update_entry(
+            self.entry, data={**self.entry.data, "entities": entities}
+        )
+        if success:
+            # filter out unset events that are not in the new entity list
+            self._event_queue = [e for e in self._event_queue if e.entity_id in entities]
         if was_running:
             self.start()
+        return success
 
     async def restore_last_update_time(self) -> bool:
         """Restore the last_update_time from the history database.
