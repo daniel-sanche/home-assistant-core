@@ -7,3 +7,4 @@
 - check auth in config flow (https://github.com/home-assistant/example-custom-config/blob/master/custom_components/detailed_hello_world_push/config_flow.py)
 - implement reauthenticating https://developers.home-assistant.io/docs/config_entries_config_flow_handler#reauthentication
 - fix presubmit checks
+- turn last_update_time into an attribute of host_reachable?
